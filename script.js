@@ -71,7 +71,11 @@ const serviceCatalog = [
     name: 'Racing Simulator Challenge',
     price: 750,
     description: 'Race on professional driving simulators.',
-    includes: ['Racing simulator', 'Choice of tracks', 'Leaderboard competition'],
+    includes: [
+      'Racing simulator',
+      'Choice of tracks',
+      'Leaderboard competition',
+    ],
   },
   {
     id: 'escape-room-challenge',
@@ -85,6 +89,7 @@ const serviceCatalog = [
 
 const STORAGE_KEY = 'next-level-booking-quote';
 const CONTACT_KEY = 'next-level-contact-enquiry';
+const COOKIE_KEY = 'next-level-cookie-choice';
 
 function formatRand(amount) {
   return `R${Number(amount).toLocaleString('en-ZA', {
@@ -105,7 +110,7 @@ function saveQuote(quote) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(quote));
   } catch {
-    // ignored if storage fails
+    // The page can still be used if browser storage is unavailable.
   }
 }
 
@@ -118,6 +123,7 @@ function escapeHtml(value) {
       '"': '&quot;',
       "'": '&#39;',
     };
+
     return entities[character];
   });
 }
@@ -148,6 +154,10 @@ function setCurrentYear() {
 }
 
 function makeServiceCard(service) {
+  const features = service.includes
+    .map((feature) => `<li>${escapeHtml(feature)}</li>`)
+    .join('');
+
   return `
     <article class="feature-card service-card">
       <div class="card-icon" aria-hidden="true">
@@ -157,12 +167,11 @@ function makeServiceCard(service) {
       <h3>${escapeHtml(service.name)}</h3>
       <p class="service-price">${formatRand(service.price)}</p>
       <p>${escapeHtml(service.description)}</p>
-      <ul>
-        ${service.includes
-          .map((feature) => `<li>${escapeHtml(feature)}</li>`)
-          .join('')}
-      </ul>
-      <a class="button button-primary" href="calculate-fees.html?add=${encodeURIComponent(service.id)}">
+      <ul>${features}</ul>
+      <a
+        class="button button-primary"
+        href="calculate-fees.html?add=${encodeURIComponent(service.id)}"
+      >
         Add to booking
       </a>
     </article>
@@ -171,28 +180,19 @@ function makeServiceCard(service) {
 
 function updateCatalogPages() {
   const path = window.location.pathname.toLowerCase();
-  const grid = document.querySelector('.card-grid');
 
-  if (!grid) return;
+  if (path.endsWith('/overview.html') || path.endsWith('overview.html')) {
+    const grid = document.querySelector('.card-grid');
 
-  if (path.endsWith('/overview.html')) {
-    grid.innerHTML = serviceCatalog
-      .filter((service) => service.type === 'Experience')
-      .map(makeServiceCard)
-      .join('');
+    if (grid) {
+      grid.innerHTML = serviceCatalog
+        .filter((service) => service.type === 'Experience')
+        .map(makeServiceCard)
+        .join('');
+    }
   }
 
-  if (path.endsWith('/package.html')) {
-    const hero = document.querySelector('.page-hero');
-
-    if (hero) {
-      hero.innerHTML = `
-        <p class="eyebrow">FEATURED EXPERIENCE</p>
-        <h1>PC Gaming <span>Session.</span></h1>
-        <p>A flexible example package for players who want time to play, practise or compete with friends.</p>
-      `;
-    }
-
+  if (path.endsWith('/package.html') || path.endsWith('package.html')) {
     const section = document.querySelector('main .section.two-column');
 
     if (section) {
@@ -209,13 +209,65 @@ function updateCatalogPages() {
   }
 }
 
-function getDiscountRate(count) {
-  if (count >= 4) return 0.15;
-  if (count === 3) return 0.1;
-  if (count === 2) return 0.05;
+function getDiscountRate(numberOfBookings) {
+  if (numberOfBookings >= 4) return 0.15;
+  if (numberOfBookings === 3) return 0.10;
+  if (numberOfBookings === 2) return 0.05;
   return 0;
 }
 
+/*
+ * Hourly calculation:
+ * PC Gaming costs R50 per player per hour.
+ * Console Gaming costs R40 per player per hour.
+ * VAT of 15% is added to the hourly estimate.
+ */
+function setupHourlyCalculator() {
+  const form = document.querySelector('#hourly-form');
+  const result = document.querySelector('#hourly-result');
+
+  if (!form || !result) return;
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    if (!form.reportValidity()) return;
+
+    const rate = Number(form.elements.experience.value);
+    const players = Number(form.elements.players.value);
+    const hours = Number(form.elements.hours.value);
+
+    if (
+      !Number.isFinite(rate) ||
+      !Number.isFinite(players) ||
+      !Number.isFinite(hours) ||
+      players < 1 ||
+      players > 20 ||
+      hours < 1 ||
+      hours > 12
+    ) {
+      result.textContent =
+        'Enter between 1 and 20 players and between 1 and 12 hours.';
+      return;
+    }
+
+    const subtotal = rate * players * hours;
+    const vat = subtotal * 0.15;
+    const total = subtotal + vat;
+
+    result.textContent =
+      `${players} player(s) × ${hours} hour(s) × ${formatRand(rate)} per player/hour ` +
+      `= ${formatRand(subtotal)} before VAT. ` +
+      `VAT (15%): ${formatRand(vat)}. ` +
+      `Estimated total: ${formatRand(total)}.`;
+  });
+}
+
+/*
+ * Package and experience calculator:
+ * One selected service counts as one booking.
+ * Discount is applied before VAT.
+ */
 function setupFeeCalculator() {
   const form = document.querySelector('#fee-form');
   const result = document.querySelector('#fee-result');
@@ -226,21 +278,18 @@ function setupFeeCalculator() {
   const query = new URLSearchParams(window.location.search);
   const addedId = query.get('add');
 
-  const initialSelected = new Set(
+  const initiallySelected = new Set(
     Array.isArray(savedQuote.selectedIds) ? savedQuote.selectedIds : []
   );
 
   if (addedId && serviceCatalog.some((service) => service.id === addedId)) {
-    initialSelected.add(addedId);
+    initiallySelected.add(addedId);
   }
 
   form.innerHTML = `
-    <p class="muted">
-      Select packages and experiences, then enter your contact details to prepare an estimated quote.
-    </p>
-
     <fieldset class="service-selection">
       <legend>Select packages and experiences</legend>
+
       ${serviceCatalog
         .map(
           (service) => `
@@ -250,12 +299,16 @@ function setupFeeCalculator() {
                 name="services"
                 type="checkbox"
                 value="${service.id}"
-                ${initialSelected.has(service.id) ? 'checked' : ''}
+                ${initiallySelected.has(service.id) ? 'checked' : ''}
               >
+
               <label for="service-${service.id}">
                 ${escapeHtml(service.name)} (${escapeHtml(service.type)})
               </label>
-              <span class="booking-option-price">${formatRand(service.price)}</span>
+
+              <span class="booking-option-price">
+                ${formatRand(service.price)}
+              </span>
             </div>
           `
         )
@@ -263,10 +316,22 @@ function setupFeeCalculator() {
     </fieldset>
 
     <label for="quote-name">Your name</label>
-    <input id="quote-name" name="name" type="text" autocomplete="name" required>
+    <input
+      id="quote-name"
+      name="name"
+      type="text"
+      autocomplete="name"
+      required
+    >
 
     <label for="quote-email">Email address</label>
-    <input id="quote-email" name="email" type="email" autocomplete="email" required>
+    <input
+      id="quote-email"
+      name="email"
+      type="email"
+      autocomplete="email"
+      required
+    >
 
     <label for="quote-phone">Phone number</label>
     <input
@@ -280,8 +345,7 @@ function setupFeeCalculator() {
       required
     >
 
-    <button class="button button-primary" type="submit">Calculate estimate</button>
-    <button class="button button-outline" id="request-quote" type="button">
+    <button class="button button-primary" type="button" id="request-quote">
       Prepare booking request
     </button>
 
@@ -292,6 +356,7 @@ function setupFeeCalculator() {
   `;
 
   const summaryRows = form.querySelector('#fee-summary-rows');
+  const requestButton = form.querySelector('#request-quote');
 
   function getSelectedServices() {
     const selectedIds = Array.from(
@@ -303,14 +368,18 @@ function setupFeeCalculator() {
 
   function calculateAndRender() {
     const selected = getSelectedServices();
-    const subtotal = selected.reduce((sum, service) => sum + service.price, 0);
+    const subtotal = selected.reduce(
+      (sum, service) => sum + service.price,
+      0
+    );
+
     const discountRate = getDiscountRate(selected.length);
     const discount = subtotal * discountRate;
     const discountedSubtotal = subtotal - discount;
     const vat = discountedSubtotal * 0.15;
     const total = discountedSubtotal + vat;
 
-    const itemRows = selected.length
+    const serviceRows = selected.length
       ? selected
           .map(
             (service) => `
@@ -321,22 +390,31 @@ function setupFeeCalculator() {
             `
           )
           .join('')
-      : `<div class="summary-row"><span>No services selected</span><strong>—</strong></div>`;
+      : `
+          <div class="summary-row">
+            <span>No services selected</span>
+            <strong>—</strong>
+          </div>
+        `;
 
     summaryRows.innerHTML = `
-      ${itemRows}
+      ${serviceRows}
+
       <div class="summary-row">
         <span>Subtotal</span>
         <strong>${formatRand(subtotal)}</strong>
       </div>
+
       <div class="summary-row">
         <span>Discount (${Math.round(discountRate * 100)}%)</span>
         <strong>−${formatRand(discount)}</strong>
       </div>
+
       <div class="summary-row">
         <span>VAT (15%)</span>
         <strong>${formatRand(vat)}</strong>
       </div>
+
       <div class="summary-row total">
         <span>Estimated total</span>
         <strong>${formatRand(total)}</strong>
@@ -356,53 +434,43 @@ function setupFeeCalculator() {
 
     if (selected.length === 0) {
       result.textContent =
-        'Select one or more packages or experiences to calculate your estimated fees.';
+        'Select one or more packages or experiences to see your estimate.';
     } else {
       result.textContent =
-        `Estimated total including ${Math.round(discountRate * 100)}% discount and 15% VAT: ${formatRand(total)}. This is a quote only, not a formal invoice.`;
+        `Estimated total: ${formatRand(total)} ` +
+        `(${Math.round(discountRate * 100)}% discount and 15% VAT included).`;
     }
 
     return { selected, subtotal, discount, discountRate, vat, total };
   }
 
-  form.addEventListener('change', calculateAndRender);
-
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-
-    if (!form.reportValidity()) return;
-
-    const quote = calculateAndRender();
-    if (quote.selected.length === 0) {
-      result.textContent = 'Please select at least one package or experience.';
-      return;
+  // Update the fee summary as soon as a service checkbox changes.
+  form.addEventListener('change', (event) => {
+    if (event.target.name === 'services') {
+      calculateAndRender();
     }
-
-    result.textContent =
-      `Estimated total including VAT: ${formatRand(quote.total)}. ` +
-      'This is a quotation only, not a formal invoice.';
   });
 
-  form.querySelector('#request-quote').addEventListener('click', () => {
+  requestButton.addEventListener('click', () => {
     if (!form.reportValidity()) return;
 
     const quote = calculateAndRender();
+
     if (quote.selected.length === 0) {
       result.textContent = 'Please select at least one package or experience.';
       return;
     }
 
-    const customer = {
-      name: form.elements.name.value.trim(),
-      phone: form.elements.phone.value.trim(),
-      email: form.elements.email.value.trim(),
-    };
-
     const bookingRequest = {
-      customer,
+      customer: {
+        name: form.elements.name.value.trim(),
+        email: form.elements.email.value.trim(),
+        phone: form.elements.phone.value.trim(),
+      },
       selectedIds: quote.selected.map((service) => service.id),
       subtotal: quote.subtotal,
       discount: quote.discount,
+      discountRate: quote.discountRate,
       vat: quote.vat,
       total: quote.total,
       createdAt: new Date().toISOString(),
@@ -411,13 +479,14 @@ function setupFeeCalculator() {
     saveQuote(bookingRequest);
 
     result.textContent =
-      `Quote prepared for ${customer.name}. ` +
+      `Booking request prepared for ${bookingRequest.customer.name}. ` +
       `Estimated total including VAT: ${formatRand(quote.total)}. ` +
-      'A consultant must confirm availability and the final booking.';
+      'This is a quote only; the business must confirm availability and final pricing.';
   });
 
   calculateAndRender();
 
+  // Remove the query parameter after pre-selecting the service.
   if (addedId) {
     window.history.replaceState({}, '', window.location.pathname);
   }
@@ -431,6 +500,7 @@ function setupContactForm() {
 
   const emailInput = form.querySelector('#email');
 
+  // Add the phone field after the email input, keeping the email label in place.
   if (emailInput && !form.querySelector('[name="phone"]')) {
     const phoneLabel = document.createElement('label');
     phoneLabel.htmlFor = 'phone';
@@ -454,6 +524,7 @@ function setupContactForm() {
     if (!form.reportValidity()) return;
 
     const formData = new FormData(form);
+
     const enquiry = {
       name: String(formData.get('name') || '').trim(),
       email: String(formData.get('email') || '').trim(),
@@ -466,26 +537,24 @@ function setupContactForm() {
     try {
       localStorage.setItem(CONTACT_KEY, JSON.stringify(enquiry));
     } catch {
-      // ignored if storage fails
+      // The confirmation still works if browser storage is unavailable.
     }
 
     result.textContent =
       `Message submitted successfully, ${enquiry.name}! ` +
-      'This is a demo confirmation; it has not actually been emailed to the business.';
+      'This is a demo confirmation; it has not been emailed to the business.';
 
     form.reset();
   });
 }
 
 function setupCookieNotice() {
-  const consentKey = 'next-level-cookie-choice';
-
   let savedChoice = null;
 
   try {
-    savedChoice = localStorage.getItem(consentKey);
+    savedChoice = localStorage.getItem(COOKIE_KEY);
   } catch {
-    // ignored if storage fails
+    // The notice can still display if storage is unavailable.
   }
 
   const settingsButton = document.createElement('button');
@@ -493,18 +562,23 @@ function setupCookieNotice() {
   settingsButton.type = 'button';
   settingsButton.textContent = 'Cookie settings';
   settingsButton.hidden = !savedChoice;
+
   document.body.appendChild(settingsButton);
 
-  let notice;
+  let notice = null;
 
   function saveChoice(choice) {
     try {
-      localStorage.setItem(consentKey, choice);
+      localStorage.setItem(COOKIE_KEY, choice);
     } catch {
-      // ignored if storage fails
+      // Ignore storage errors.
     }
 
-    if (notice) notice.remove();
+    if (notice) {
+      notice.remove();
+      notice = null;
+    }
+
     settingsButton.hidden = false;
   }
 
@@ -519,15 +593,24 @@ function setupCookieNotice() {
     notice.innerHTML = `
       <h2>Cookie notice</h2>
       <p>
-        This student demo uses browser storage to remember your choice and to
-        remember your selected packages and experiences. It does not use
-        advertising or analytics cookies.
+        This student demo uses browser storage to remember your cookie choice
+        and selected services. It does not use advertising or analytics cookies.
       </p>
+
       <div class="cookie-actions">
-        <button class="button button-primary" type="button" data-cookie-choice="accepted">
+        <button
+          class="button button-primary"
+          type="button"
+          data-cookie-choice="accepted"
+        >
           Accept
         </button>
-        <button class="button button-outline" type="button" data-cookie-choice="declined">
+
+        <button
+          class="button button-outline"
+          type="button"
+          data-cookie-choice="declined"
+        >
           Decline optional cookies
         </button>
       </div>
@@ -553,6 +636,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupMobileNavigation();
   setCurrentYear();
   updateCatalogPages();
+  setupHourlyCalculator();
   setupFeeCalculator();
   setupContactForm();
   setupCookieNotice();
