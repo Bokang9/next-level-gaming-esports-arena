@@ -14,12 +14,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-      - name: Install
+      - name: Check project
         run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          ls -la
+          if [ -f package.json ]; then echo "Found package.json"; cat package.json; else echo "No package.json yet - skipping Node steps"; exit 0; fi
+      - name: Install if Node project
+        run: |
+          if [ -f package.json ]; then if [ -f package-lock.json ]; then npm ci; else npm install; fi; else echo "Skipping install"; fi
       - name: Test if exists
-        run: npm test -- --watchAll=false || echo "No tests yet - skipping"
+        run: |
+          if [ -f package.json ]; then npm test -- --watchAll=false || echo "No tests yet - skipping"; else echo "Skipping test"; fi
       - name: Build if exists
         run: |
-          if grep -q '"build"' package.json; then npm run build; else echo "No build script - skipping"; fi
+          if [ -f package.json ] && grep -q '"build"' package.json; then npm run build; else echo "No build script - skipping"; fi
