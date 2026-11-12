@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact Us | Next Level</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="logo" href="index.html"><span class="logo-mark">NL</span> NEXT LEVEL</a>
+    <button class="menu-toggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+    <nav class="site-nav" aria-label="Main navigation">
+      <a href="index.html">Home</a>
+      <a href="about.html">About Us</a>
+      <a href="overview.html">Experiences</a>
+      <a href="package.html">Featured Package</a>
+      <a href="calculate-fees.html">Calculate Fees</a>
+      <a class="active" href="contact.html">Contact</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="page-hero">
+      <p class="eyebrow">GET IN TOUCH</p>
+      <h1>Let's make it <span>happen.</span></h1>
+      <p>Ask a question, enquire about a package or tell us what kind of gaming session you have in mind.</p>
+    </section>
+
+    <section class="section contact-layout">
+      <div>
+        <p class="eyebrow">CONTACT INFORMATION</p>
+        <h2>Talk to the team</h2>
+
+        <div class="contact-item">
+          <span class="card-icon">✉</span>
+          <div><h3>Email</h3><p>hello@example.com</p></div>
+        </div>
+
+        <div class="contact-item">
+          <span class="card-icon">⌖</span>
+          <div><h3>Location</h3><p>Location to be confirmed</p></div>
+        </div>
+
+        <div class="contact-item">
+          <span class="card-icon">◷</span>
+          <div><h3>Opening hours</h3><p>To be confirmed by the business</p></div>
+        </div>
+
+        <p class="notice">Replace the placeholder details with verified business contact information before submission or publication.</p>
+      </div>
+
+      <div class="form-card">
+        <h2>Send an enquiry</h2>
+        <form id="contact-form">
+          <label for="name">Your name</label>
+          <input id="name" name="name" type="text" autocomplete="name" required>
+
+          <label for="email">Email address</label>
+          <input id="email" name="email" type="email" autocomplete="email" required>
+
+          <label for="topic">What is your enquiry about?</label>
+          <select id="topic" name="topic">
+            <option>Gaming package</option>
+            <option>Group session</option>
+            <option>Booking availability</option>
+            <option>General question</option>
+          </select>
+
+          <label for="message">Message</label>
+          <textarea id="message" name="message" rows="4" required></textarea>
+
+          <button class="button button-primary" type="submit">Prepare enquiry</button>
+        </form>
+        <p id="contact-result" class="result" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <a class="logo" href="index.html"><span class="logo-mark">NL</span> NEXT LEVEL</a>
+    <p>Gaming & Esports Arena</p>
+    <p class="footer-note">Student project demonstration website. Package details and prices are examples.</p>
+    <p>©️ <span class="year"></span> Next Level Gaming & Esports Arena</p>
+  </footer>
+</body>
+</html>
