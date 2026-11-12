@@ -219,3 +219,13 @@ The website is designed to present the Next Level Gaming & Esports Arena in a cl
 
 This makes it a strong student project for a gaming business website and demonstrates how a real business site could guide customers from discovery to booking.
 
+## References
+
+1. MDN Web Docs. HTML: HyperText Markup Language. [online] Available at: https://developer.mozilla.org/en-US/docs/Web/HTML
+2. MDN Web Docs. CSS: Cascading Style Sheets. [online] Available at: https://developer.mozilla.org/en-US/docs/Web/CSS
+3. MDN Web Docs. JavaScript. [online] Available at: https://developer.mozilla.org/en-US/docs/Web/JavaScript
+4. W3Schools. HTML Tutorial. [online] Available at: https://www.w3schools.com/html/
+5. W3Schools. CSS Tutorial. [online] Available at: https://www.w3schools.com/css/
+6. W3Schools. JavaScript Tutorial. [online] Available at: https://www.w3schools.com/js/
+7. Google Fonts. [online] Available at: https://fonts.google.com/
+8. WebAIM. Introduction to Web Accessibility. [online] Available at: https://webaim.org/intro/ 
